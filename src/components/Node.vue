@@ -6,76 +6,84 @@
     :y="data.y - margin"
     :width="data.width + margin * 2"
     :height="data.height + margin * 2"
-    @mousedown="onMousedown">
-      <div class="outer" :style="`padding: ${margin}px;`">
-        <div class="content" :class="background && 'background'" ref="content" v-bind="$attrs">
-          <div v-if="!$slots.default" class="default-label">
-            {{ data.id }}
-          </div>
-          <slot>
-          </slot>
+    @mousedown="onMousedown"
+  >
+    <div class="outer" :style="`padding: ${margin}px;`">
+      <div
+        class="content"
+        :class="background && 'background'"
+        ref="content"
+        v-bind="$attrs"
+      >
+        <div v-if="!$slots.default" class="default-label">
+          {{ data.id }}
         </div>
+        <slot> </slot>
       </div>
+    </div>
   </foreignObject>
 </template>
 
 <script>
-import dragMixin from '../mixins/drag'
+import dragMixin from "../mixins/drag";
 export default {
-  mixins: [
-    dragMixin
-  ],
+  mixins: [dragMixin],
   props: {
     data: {
       // { x, y, width, height }
     },
-    margin: { // margin allows to display borders, shadow etc without clipping contents
+    margin: {
+      // margin allows to display borders, shadow etc without clipping contents
       type: Number,
       default: 10,
     },
-    useDrag: { // use default drag behavior
+    useDrag: {
+      // use default drag behavior
       type: Boolean,
-      default: true
+      default: true,
     },
-    fit: {  // fit node width/height when mounted
+    fit: {
+      // fit node width/height when mounted
       type: Boolean,
-      default: true
+      default: true,
     },
-    background: { // show background
+    background: {
+      // show background
       type: Boolean,
-      default: true
+      default: true,
     },
-    textSelect: { // allow text selection
+    textSelect: {
+      // allow text selection
       type: Boolean,
-      default: false
+      default: false,
     },
   },
-  mounted () {
+  mounted() {
     if (this.fit) {
-      this.fitContent()
+      this.fitContent();
     }
   },
   methods: {
-    onDrag ({ x,y }) {
-      this.data.x += x
-      this.data.y += y
-      this.$emit('drag', { x, y })
+    onDrag({ x, y }) {
+      this.data.x += x;
+      this.data.y += y;
+      this.$emit("drag", { x, y });
     },
-    fitContent () {
-      this.data.width = this.$refs.content.offsetWidth
-      this.data.height = this.$refs.content.offsetHeight
+    fitContent() {
+      //this.data.width = this.$refs.content.offsetWidth;
+      //this.data.height = this.$refs.content.offsetHeight;
     },
-    onMousedown (e) {
+    onMousedown(e) {
       if (!this.textSelect) {
-        e.preventDefault() // prevent text select
+        e.preventDefault(); // prevent text select
       }
       if (this.useDrag) {
-        e.stopPropagation() // prevent viewport drag
-        this.startDrag(e)
+        e.stopPropagation(); // prevent viewport drag
+        this.startDrag(e);
       }
-    }
-  }
-}
+    },
+  },
+};
 </script>
 
 <style>
@@ -86,7 +94,7 @@ export default {
 }
 
 .node .background {
-  background-color: rgba(100, 200, 100, .9);
+  background-color: rgba(100, 200, 100, 0.9);
   border-radius: 7px;
 }
 

@@ -1,147 +1,122 @@
 <template>
   <svg class="screen" ref="screen">
     <defs>
-      <markers :markers="markers">
-      </markers>
+      <markers :markers="markers"></markers>
     </defs>
     <g>
-      <slot>
-      </slot>
+      <slot></slot>
     </g>
   </svg>
 </template>
 
 <script>
-import Markers from './Markers'
-import SvgPanZoom from '../../lib/svg-pan-zoom/svg-pan-zoom'
+import Markers from "./Markers";
+import SvgPanZoom from "../../lib/svg-pan-zoom/svg-pan-zoom";
 export default {
   props: {
     markers: {
       type: Array, // { id:String, type: 'arrow|circle|square|diamond', scale: Number, style: String }
-      default: () => []
+      default: () => [],
     },
     options: {
       type: Object,
-      default: () => ({})
-    }
+      default: () => ({}),
+    },
   },
   components: {
-    Markers
+    Markers,
   },
   data() {
     return {
       panzoom: null,
-    }
+    };
   },
-  mounted () {
-    this.panzoom = SvgPanZoom(this.$refs.screen, Object.assign({
-      dblClickZoomEnabled: false,
-      mouseWheelZoomEnabled: true,
-      preventMouseEventsDefault: true,
-      fit: false,
-      contain: false,
+  mounted() {
+    var eventsHandler = {
+      haltEventListeners: [
+        "touchstart",
+        "touchend",
+        "touchmove",
+        "touchleave",
+        "touchcancel",
+      ],
+      init: function (options) {
+        var instance = options.instance,
+          initialScale = 1,
+          pannedX = 0,
+          pannedY = 0;
+
+        // Init Hammer
+        // Listen only for pointer and touch events
+        this.hammer = Hammer(options.svgElement, {
+          inputClass: Hammer.SUPPORT_POINTER_EVENTS
+            ? Hammer.PointerEventInput
+            : Hammer.TouchInput,
+        });
+
+        // Enable pinch
+        this.hammer.get("pinch").set({ enable: true });
+
+        // Handle double tap
+        this.hammer.on("doubletap", function (ev) {
+          instance.zoomIn();
+        });
+
+        // Handle pan
+        this.hammer.on("panstart panmove", function (ev) {
+          // On pan start reset panned variables
+          if (ev.type === "panstart") {
+            pannedX = 0;
+            pannedY = 0;
+          }
+
+          // Pan only the difference
+          instance.panBy({ x: ev.deltaX - pannedX, y: ev.deltaY - pannedY });
+          pannedX = ev.deltaX;
+          pannedY = ev.deltaY;
+        });
+
+        // Handle pinch
+        this.hammer.on("pinchstart pinchmove", function (ev) {
+          // On pinch start remember initial zoom
+          if (ev.type === "pinchstart") {
+            initialScale = instance.getZoom();
+            instance.zoomAtPoint(initialScale * ev.scale, {
+              x: ev.center.x,
+              y: ev.center.y,
+            });
+          }
+
+          instance.zoomAtPoint(initialScale * ev.scale, {
+            x: ev.center.x,
+            y: ev.center.y,
+          });
+        });
+
+        // Prevent moving the page on some devices when panning over SVG
+        options.svgElement.addEventListener("touchmove", function (e) {
+          e.preventDefault();
+        });
+      },
+    };
+
+    this.panzoom = SvgPanZoom(".screen", {
+      zoomEnabled: true,
+      fit: true,
       center: false,
-      zoomScaleSensitivity: 0.4,
-      minZoom: 0.1,
-      maxZoom: 5,
-      onZoom: scale => {},
-      onPan: pan => {},
-      onUserZoom: e => {},
-      onUserPan: e => {},
-      onDoubleClick: () => {},
-      onUpdatedCTM: m => {}
-    }, this.options))
-
-    this.panzoom.zoomRect = this.zoomRect
-    this.panzoom.zoomNode = this.zoomNode
-    this.panzoom.panNode = this.panNode
+      customEventsHandler: eventsHandler,
+    });
   },
-  methods: {
-    zoomTo ({x, y, scale}) {
-      this.panzoom.zoom(scale)
-      this.panzoom.pan( x,y )
-    },
-    /**
-     * Centers and zooms a rectangle
-     * @param rect { left, right, top, bottom }
-     * @param scale force zoom to a specific value (eg: 1)
-     */
-    zoomRect (rect, opts = {scale: null}) {
-      let scale = opts.scale
-      const screen = this.$refs.screen
-      const width = rect.right - rect.left
-      const height = rect.bottom - rect.top
-      if (!scale) {
-        const dx = width / screen.clientWidth
-        const dy = height / screen.clientHeight
-        scale = 1 / Math.max(dx, dy)
-      }
-      const x = -rect.left * scale + ((screen.clientWidth / scale - width) / 2) * scale
-      const y = -rect.top * scale + ((screen.clientHeight / scale - height) / 2) * scale
-
-      this.panzoom.zoom(scale)
-      this.panzoom.pan({ x, y })
-    },
-    zoomNode (node) {
-      const screen = this.$refs.screen
-      const marginX = screen.clientWidth / 2 - node.width / 2
-      const marginY = screen.clientHeight / 2 - node.height / 2
-
-      this.zoomRect({
-        left: node.x - marginX,
-        right: node.x + node.width + marginX,
-        top: node.y - marginY,
-        bottom: node.y + node.height + marginY
-      })
-    },
-    /**
-     * centers the view and zoom on a group nodes
-     */
-    zoomNodes (nodes, opts = { padding: 50, scale: null }) {
-      if (!nodes || !nodes.length) {
-        return
-      }
-      const padding = opts.padding || 50
-      const scale = opts.scale
-      let left = Infinity
-      let top = Infinity
-      let right = -Infinity
-      let bottom = -Infinity
-
-      nodes.forEach(node => {
-        if (node.x < left) left = node.x
-        if (node.x + node.width > right) right = node.x + node.width
-        if (node.y < top) top = node.y
-        if (node.y + node.height > bottom) bottom = node.y + node.height
-      })
-
-      this.zoomRect({
-        left: left - padding,
-        top: top - padding,
-        right: right + padding,
-        bottom: bottom + padding,
-      }, { scale })
-    },
-    panNode (node, opts = { offsetX, offsetY }) { // centers node on screen
-      const offsetX = opts.offsetX || 0
-      const offsetY = opts.offsetY || 0
-      const zoom = this.panzoom.getZoom()
-      const x = this.$el.clientWidth / 2 - (node.x + node.width / 2) * zoom + offsetX
-      const y = this.$el.clientHeight / 2 - (node.y + node.height / 2) * zoom + offsetY
-      this.panzoom.pan({ x, y })
-    },
-  },
-}
+};
 </script>
 
 <style scoped>
 #arrow-end {
-  fill: red !important
+  fill: red !important;
 }
 .screen {
   width: 100%;
   height: 100%;
   outline: none;
-  border: 1px solid #ccc;
 }
 </style>
