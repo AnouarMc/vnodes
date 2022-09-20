@@ -103,7 +103,8 @@ export default {
     this.panzoom = SvgPanZoom(".screen", {
       zoomEnabled: true,
       fit: true,
-      center: false,
+      center: true,
+      contain: true,
       customEventsHandler: eventsHandler,
     });
   },
