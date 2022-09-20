@@ -71,7 +71,7 @@ export default {
     },
     fitContent() {
       //this.data.width = this.$refs.content.offsetWidth;
-      //this.data.height = this.$refs.content.offsetHeight;
+      this.data.height = this.$refs.content.offsetHeight;
     },
     onMousedown(e) {
       if (!this.textSelect) {
