@@ -105,6 +105,7 @@ export default {
       fit: false,
       center: true,
       contain: false,
+      minZoom: 0,
       customEventsHandler: eventsHandler,
     });
   },
